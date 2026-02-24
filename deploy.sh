@@ -44,7 +44,29 @@ echo "✅ Database ID: $DB_ID"
 
 # 3. Update wrangler.toml
 echo "📝 Updating configuration..."
-sed -i '' "s/database_id = \"\"/database_id = \"$DB_ID\"/" wrangler.toml
+
+# Copy template if wrangler.toml doesn't exist
+if [ ! -f "wrangler.toml" ]; then
+    echo "   Creating wrangler.toml from template..."
+    cp wrangler.toml.example wrangler.toml
+fi
+
+# Check if database_id is already set to something other than empty string
+CURRENT_DB_ID=$(grep 'database_id = "' wrangler.toml | awk -F '"' '{print $2}')
+
+if [ "$CURRENT_DB_ID" != "$DB_ID" ]; then
+    echo "   Setting database_id in wrangler.toml..."
+    # If it's empty, replace it
+    if [ -z "$CURRENT_DB_ID" ]; then
+         sed -i '' "s/database_id = \"\"/database_id = \"$DB_ID\"/" wrangler.toml
+    else
+         # If it's not empty, replace the existing ID
+         sed -i '' "s/database_id = \".*\"/database_id = \"$DB_ID\"/" wrangler.toml
+    fi
+else
+    echo "   database_id is already set correctly."
+fi
+
 
 # 4. Apply Schema
 echo "🏗️ Applying database schema..."
