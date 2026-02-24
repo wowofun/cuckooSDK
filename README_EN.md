@@ -1,5 +1,7 @@
 # Cuckoo Relay Server (Open Source)
 
+Language: English | [中文](README_CN.md)
+
 This is the official self-hosted relay server for the Cuckoos iOS App. By deploying this lightweight script to your own Cloudflare account (Free Tier), you can enable secure, remote communication between your devices and friends.
 
 ## Features
@@ -13,7 +15,7 @@ This is the official self-hosted relay server for the Cuckoos iOS App. By deploy
 
 ### Option 1: One-Click Button (Recommended)
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bicornfun/cuckoos-relay)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/CuckooRelayServer.git)
 
 1. Click the button above.
 2. Authorize Cloudflare.
@@ -51,6 +53,9 @@ This is the official self-hosted relay server for the Cuckoos iOS App. By deploy
 4. Enter your **Server URL** (from step 3).
 5. Enter any **Connection Key** (e.g., `my-secret-password-123`).
    - *Note: Share this Key ONLY with friends you want to chat with. Anyone with the same Key will be in the same "chat room".*
+
+## Documentation
+- [OpenClaw Integration Guide](OPENCLAW_INTEGRATION.md)
 
 ## Technical Details
 

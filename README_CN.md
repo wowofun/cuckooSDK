@@ -1,8 +1,10 @@
 # Cuckoo 中继服务器 (开源版)
 
+语言：中文 | [English](README.md)
+
 **Cuckoos - 加密对讲机** 的安全、私密、开源的中继服务器。
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/cuckooSDK)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/CuckooRelayServer.git)
 
 ## 部署选项
 
@@ -35,6 +37,9 @@
 2.  进入 **设置 (Settings)** -> **远程连接 (Remote Connection)**。
 3.  输入您的 **服务器地址** (例如 `https://your-domain.com` 或 `http://your-ip:8787`)。
 4.  输入任意 **连接密钥 (Connection Key)** (作为您的私有频道密码)。
+
+## 文档目录
+- [OpenClaw 集成指南](OPENCLAW_INTEGRATION.md)
 
 ## 隐私与安全
 - **端到端加密**: App 在发送前加密音频，服务器只负责转发加密数据。

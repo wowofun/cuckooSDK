@@ -1,8 +1,10 @@
 # Cuckoo Relay Server (Open Source)
 
+Language: English | [中文](README_CN.md)
+
 A secure, private, and open-source relay server for **Cuckoos - Encrypted Walkie Talkie**.
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/cuckooSDK)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/CuckooRelayServer.git)
 
 ## Deployment Options
 
@@ -35,6 +37,9 @@ Run on any server (Ubuntu, CentOS, AWS, DigitalOcean, etc.).
 2.  Go to **Settings** -> **Remote Connection**.
 3.  Enter your server URL (e.g., `https://your-server.com` or `http://your-ip:8787`).
 4.  Enter any **Connection Key** (shared password).
+
+## Documentation
+- [OpenClaw Integration Guide](OPENCLAW_INTEGRATION.md)
 
 ## Privacy & Security
 - **End-to-End Encryption**: The app encrypts audio *before* sending.
