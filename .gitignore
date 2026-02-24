@@ -4,3 +4,6 @@ node_modules
 dist
 .env
 wrangler.toml
+data
+*.db
+test-relay.sh

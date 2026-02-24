@@ -77,7 +77,7 @@ export default {
       const lastId = parseInt(url.searchParams.get("last_id") || "0");
       
       const startTime = Date.now();
-      const TIMEOUT = 20000; // 20 seconds long poll
+      const TIMEOUT = 15000; // 15 seconds long poll (Client timeout should be > 15s)
       
       while (Date.now() - startTime < TIMEOUT) {
         // Query for new messages
