@@ -6,8 +6,13 @@
 echo "🐦 Cuckoos Relay Server Deployment"
 echo "==================================="
 
-# Check for Wrangler
-if ! command -v wrangler &> /dev/null; then
+# Determine Wrangler Command
+if command -v wrangler &> /dev/null; then
+    WRANGLER="wrangler"
+elif command -v npx &> /dev/null; then
+    echo "⚠️  Global Wrangler not found, using npx..."
+    WRANGLER="npx wrangler"
+else
     echo "❌ Wrangler (Cloudflare CLI) not found."
     echo "👉 Please install it: npm install -g wrangler"
     exit 1
@@ -15,19 +20,19 @@ fi
 
 # 1. Login
 echo "🔑 Checking Cloudflare login..."
-wrangler whoami || wrangler login
+$WRANGLER whoami || $WRANGLER login
 
 # 2. Create D1 Database
 echo "📦 Creating D1 Database..."
 DB_NAME="cuckoos-db-$(date +%s)"
-CREATE_OUTPUT=$(wrangler d1 create $DB_NAME)
+CREATE_OUTPUT=$($WRANGLER d1 create $DB_NAME)
 DB_ID=$(echo "$CREATE_OUTPUT" | grep "database_id" | awk -F '"' '{print $2}')
 
 if [ -z "$DB_ID" ]; then
     echo "❌ Failed to create database. Please check your Cloudflare account limits."
     # Try to find existing
     echo "   Trying to use existing 'cuckoos-db'..."
-    DB_ID=$(wrangler d1 list | grep "cuckoos-db" | awk '{print $1}' | head -n 1)
+    DB_ID=$($WRANGLER d1 list | grep "cuckoos-db" | awk '{print $1}' | head -n 1)
 fi
 
 if [ -z "$DB_ID" ]; then
@@ -43,11 +48,11 @@ sed -i '' "s/database_id = \"\"/database_id = \"$DB_ID\"/" wrangler.toml
 
 # 4. Apply Schema
 echo "🏗️ Applying database schema..."
-wrangler d1 execute $DB_NAME --file=schema.sql --remote
+$WRANGLER d1 execute $DB_NAME --file=schema.sql --remote
 
 # 5. Deploy Worker
 echo "🚀 Deploying Worker..."
-wrangler deploy
+$WRANGLER deploy
 
 echo "==================================="
 echo "🎉 Deployment Complete!"
