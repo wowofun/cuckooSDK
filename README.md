@@ -1,16 +1,42 @@
-# Cuckoo Relay Server
+# Cuckoo Relay Server (Open Source)
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bicornfun/cuckoos-relay)
+A secure, private, and open-source relay server for **Cuckoos - Encrypted Walkie Talkie**.
 
-## Language / 语言
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/cuckooSDK)
 
-- **[English](README_EN.md)**
-- **[简体中文](README_CN.md)**
+## Deployment Options
 
----
+### Option 1: Cloudflare Workers (Recommended)
+Free, fast, and requires zero maintenance.
 
-## What is this? / 这是什么？
+1.  **Run the deployment script:**
+    ```bash
+    ./deploy.sh
+    ```
+2.  Follow the instructions on screen.
 
-A lightweight, serverless relay server for **Cuckoos App**, allowing you to chat with friends over the internet securely and for free using Cloudflare Workers.
+### Option 2: Docker / VPS
+Run on any server (Ubuntu, CentOS, AWS, DigitalOcean, etc.).
 
-这是一个为 **Cuckoos App** 设计的轻量级无服务器中继服务，让您利用 Cloudflare Workers 免费实现跨网安全聊天。
+1.  **Build and Run with Docker:**
+    ```bash
+    docker build -t cuckoo-relay .
+    docker run -d -p 8787:8787 -v $(pwd)/data:/data cuckoo-relay
+    ```
+
+2.  **Or Run with Node.js directly:**
+    ```bash
+    npm install
+    node server.js
+    ```
+
+## Usage in App
+1.  Open **Cuckoos App**.
+2.  Go to **Settings** -> **Remote Connection**.
+3.  Enter your server URL (e.g., `https://your-server.com` or `http://your-ip:8787`).
+4.  Enter any **Connection Key** (shared password).
+
+## Privacy & Security
+- **End-to-End Encryption**: The app encrypts audio *before* sending.
+- **No Logs**: This relay server only stores messages temporarily for delivery.
+- **Channel Isolation**: Your Connection Key is hashed to create a unique channel ID.

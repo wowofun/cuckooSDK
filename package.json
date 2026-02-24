@@ -20,5 +20,10 @@
   "homepage": "https://github.com/wowofun/cuckooSDK#readme",
   "devDependencies": {
     "wrangler": "^4.68.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
   }
 }
