@@ -87,9 +87,32 @@ export default {
         });
       } catch (e) {
         if (e.message.includes("no such table")) {
-          return new Response(JSON.stringify({ 
-            error: "Database schema not initialized. Please run 'wrangler d1 execute cuckoos-db --file=schema.sql --remote' (or local for dev)." 
-          }), { status: 500, headers: { ...headers, "Content-Type": "application/json" } });
+          // Auto-initialize Schema if missing
+          console.log("Table missing, initializing schema...");
+          await initSchema(env);
+          
+          // Retry the insert
+          const stmt = env.DB.prepare(
+            `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at, quote_id, quote_content, quote_sender, file_data, file_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(
+            channelHex, 
+            senderID, 
+            senderName || "Unknown", 
+            content || "", 
+            id || crypto.randomUUID(), 
+            type || "text", 
+            Date.now(),
+            quoteId || null,
+            quoteContent || null,
+            quoteSender || null,
+            fileData || null,
+            fileName || null
+          );
+          await stmt.run();
+          
+          return new Response(JSON.stringify({ success: true }), { 
+            headers: { ...headers, "Content-Type": "application/json" } 
+          });
         }
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
       }
@@ -115,8 +138,20 @@ export default {
              ON CONFLICT(channel, user_id) DO UPDATE SET last_seen = ?, user_name = ?`
           ).bind(channelHex, userId, userName || "Unknown", Date.now(), Date.now(), userName || "Unknown").run();
         } catch (e) {
-          // Ignore presence errors to keep polling alive
-          console.error(e);
+           if (e.message.includes("no such table")) {
+             // Auto-init schema if missing (for presence)
+             console.log("Presence table missing, initializing...");
+             await initSchema(env);
+             // Retry presence update
+             try {
+                await env.DB.prepare(
+                  `INSERT INTO presence (channel, user_id, user_name, last_seen) VALUES (?, ?, ?, ?) 
+                   ON CONFLICT(channel, user_id) DO UPDATE SET last_seen = ?, user_name = ?`
+                ).bind(channelHex, userId, userName || "Unknown", Date.now(), Date.now(), userName || "Unknown").run();
+             } catch(retryErr) { console.error("Retry failed", retryErr); }
+           } else {
+             console.error(e);
+           }
         }
       }
       
@@ -144,9 +179,14 @@ export default {
         }
       } catch (e) {
         if (e.message.includes("no such table")) {
-          return new Response(JSON.stringify({ 
-            error: "Database schema not initialized. Please run 'wrangler d1 execute cuckoos-db --file=schema.sql --remote' (or local for dev)." 
-          }), { status: 500, headers: { ...headers, "Content-Type": "application/json" } });
+          // Auto-initialize Schema if missing (for poll)
+          console.log("Table missing in poll, initializing schema...");
+          await initSchema(env);
+          
+          // Return empty list to force client reconnect (simple retry mechanism)
+          return new Response(JSON.stringify([]), { 
+            headers: { ...headers, "Content-Type": "application/json" } 
+          });
         }
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
       }
@@ -162,16 +202,26 @@ export default {
       const ACTIVE_THRESHOLD = 60000; // 1 minute
       const now = Date.now();
       
-      const results = await env.DB.prepare(
-        `SELECT user_id as id, user_name as name, last_seen as lastSeen FROM presence WHERE channel = ? AND last_seen > ?`
-      ).bind(channelHex, now - ACTIVE_THRESHOLD).all();
-      
-      return new Response(JSON.stringify({
-        count: results.results.length,
-        members: results.results
-      }), { 
-        headers: { ...headers, "Content-Type": "application/json" } 
-      });
+      try {
+        const results = await env.DB.prepare(
+          `SELECT user_id as id, user_name as name, last_seen as lastSeen FROM presence WHERE channel = ? AND last_seen > ?`
+        ).bind(channelHex, now - ACTIVE_THRESHOLD).all();
+        
+        return new Response(JSON.stringify({
+          count: results.results.length,
+          members: results.results
+        }), { 
+          headers: { ...headers, "Content-Type": "application/json" } 
+        });
+      } catch (e) {
+         if (e.message.includes("no such table")) {
+            await initSchema(env);
+            return new Response(JSON.stringify({ count: 0, members: [] }), { 
+              headers: { ...headers, "Content-Type": "application/json" } 
+            });
+         }
+         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
+      }
     }
     
     return new Response("Not Found", { status: 404, headers });
@@ -191,4 +241,40 @@ export default {
       console.error("Cleanup failed:", e);
     }
   }
+}
+
+// Helper: Auto-Initialize Schema
+async function initSchema(env) {
+  // Batch execute schema creation
+  await env.DB.batch([
+    env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        channel TEXT NOT NULL,
+        sender_id TEXT NOT NULL,
+        sender_name TEXT,
+        content TEXT,
+        msg_id TEXT,
+        type TEXT,
+        created_at INTEGER,
+        quote_id TEXT,
+        quote_content TEXT,
+        quote_sender TEXT,
+        file_data TEXT,
+        file_name TEXT
+      )
+    `),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_channel_id ON messages(channel, id)`),
+    env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS presence (
+        channel TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        user_name TEXT,
+        last_seen INTEGER,
+        PRIMARY KEY (channel, user_id)
+      )
+    `),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_presence_channel ON presence(channel)`)
+  ]);
+  console.log("Schema initialized successfully.");
 }
