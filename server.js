@@ -50,6 +50,18 @@ try {
     console.log("Migrating: Adding quote_sender column...");
     db.prepare('ALTER TABLE messages ADD COLUMN quote_sender TEXT').run();
   }
+  if (!columns.includes('file_data')) {
+    console.log("Migrating: Adding file_data column...");
+    db.prepare('ALTER TABLE messages ADD COLUMN file_data TEXT').run();
+  }
+  if (!columns.includes('file_name')) {
+    console.log("Migrating: Adding file_name column...");
+    db.prepare('ALTER TABLE messages ADD COLUMN file_name TEXT').run();
+  }
+  if (!columns.includes('quote_id')) {
+    console.log("Migrating: Adding quote_id column...");
+    db.prepare('ALTER TABLE messages ADD COLUMN quote_id TEXT').run();
+  }
 } catch (error) {
   console.error('Migration failed:', error);
 }
@@ -90,26 +102,29 @@ const requireAuth = (req, res, next) => {
 // 3. Send Message
 app.post('/send', requireAuth, (req, res) => {
   try {
-    const { senderName, senderID, content, id, type, quoteContent, quoteSender } = req.body;
+    const { senderName, senderID, content, id, type, quoteId, quoteContent, quoteSender, fileData, fileName } = req.body;
     
-    if (!content || !senderID) {
+    if ((!content && !fileData) || !senderID) {
       return res.status(400).send("Missing fields");
     }
 
     const stmt = db.prepare(
-      `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at, quote_content, quote_sender) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at, quote_id, quote_content, quote_sender, file_data, file_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     
     stmt.run(
       req.channelHex, 
       senderID, 
       senderName || "Unknown", 
-      content, 
+      content || "", 
       id || crypto.randomUUID(), 
       type || "text", 
       Date.now(),
+      quoteId || null,
       quoteContent || null,
-      quoteSender || null
+      quoteSender || null,
+      fileData || null,
+      fileName || null
     );
     
     res.json({ success: true });
@@ -176,6 +191,20 @@ app.get('/poll', requireAuth, async (req, res) => {
     clearInterval(pollInterval);
   });
 });
+
+// Automatic Cleanup Task (Every 1 hour)
+setInterval(() => {
+  const retentionMs = 24 * 60 * 60 * 1000; // 24 Hours
+  const cutoff = Date.now() - retentionMs;
+  try {
+    const info = db.prepare("DELETE FROM messages WHERE created_at < ?").run(cutoff);
+    if (info.changes > 0) {
+      console.log(`[Cleanup] Deleted ${info.changes} messages older than 24 hours.`);
+    }
+  } catch (e) {
+    console.error("[Cleanup] Failed:", e);
+  }
+}, 60 * 60 * 1000);
 
 // 5. Get Members
 app.get('/members', requireAuth, (req, res) => {

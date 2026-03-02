@@ -45,26 +45,29 @@ export default {
     if (method === "POST" && url.pathname === "/send") {
       try {
         const body = await request.json();
-        const { senderName, senderID, content, id, type, quoteContent, quoteSender } = body;
+        const { senderName, senderID, content, id, type, quoteId, quoteContent, quoteSender, fileData, fileName } = body;
         
-        if (!content || !senderID) {
+        if ((!content && !fileData) || !senderID) {
           return new Response("Missing fields", { status: 400, headers });
         }
         
         // Store in D1
-        // Table: messages (id INTEGER PRIMARY KEY, channel TEXT, sender_id TEXT, sender_name TEXT, content TEXT, msg_id TEXT, type TEXT, created_at INTEGER, quote_content TEXT, quote_sender TEXT)
+        // Table: messages (id INTEGER PRIMARY KEY, channel TEXT, sender_id TEXT, sender_name TEXT, content TEXT, msg_id TEXT, type TEXT, created_at INTEGER, quote_id TEXT, quote_content TEXT, quote_sender TEXT, file_data TEXT, file_name TEXT)
         const stmt = env.DB.prepare(
-          `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at, quote_content, quote_sender) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at, quote_id, quote_content, quote_sender, file_data, file_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).bind(
           channelHex, 
           senderID, 
           senderName || "Unknown", 
-          content, 
+          content || "", 
           id || crypto.randomUUID(), 
           type || "text", 
           Date.now(),
+          quoteId || null,
           quoteContent || null,
-          quoteSender || null
+          quoteSender || null,
+          fileData || null,
+          fileName || null
         );
         
         await stmt.run();
@@ -147,5 +150,20 @@ export default {
     }
     
     return new Response("Not Found", { status: 404, headers });
+  },
+  
+  // Scheduled Task (Cron Trigger)
+  // Configure this in wrangler.toml with [triggers] crons = ["0 * * * *"] (Every hour)
+  async scheduled(event, env, ctx) {
+    console.log("Running scheduled cleanup...");
+    const retentionMs = 24 * 60 * 60 * 1000; // 24 Hours
+    const cutoff = Date.now() - retentionMs;
+    
+    try {
+      await env.DB.prepare("DELETE FROM messages WHERE created_at < ?").bind(cutoff).run();
+      console.log(`Deleted messages older than ${new Date(cutoff).toISOString()}`);
+    } catch (e) {
+      console.error("Cleanup failed:", e);
+    }
   }
 }

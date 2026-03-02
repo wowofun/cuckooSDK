@@ -9,7 +9,9 @@ CREATE TABLE messages (
   type TEXT,
   created_at INTEGER,
   quote_content TEXT,
-  quote_sender TEXT
+  quote_sender TEXT,
+  file_data TEXT,
+  file_name TEXT
 );
 CREATE INDEX idx_channel_id ON messages(channel, id);
 
