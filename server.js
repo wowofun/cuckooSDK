@@ -21,10 +21,38 @@ db.exec(`
     content TEXT,
     msg_id TEXT,
     type TEXT,
-    created_at INTEGER
+    created_at INTEGER,
+    quote_content TEXT,
+    quote_sender TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_channel_id ON messages(channel, id);
+  
+  CREATE TABLE IF NOT EXISTS presence (
+    channel TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    user_name TEXT,
+    last_seen INTEGER,
+    PRIMARY KEY (channel, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_presence_channel ON presence(channel);
 `);
+
+// Migration: Add missing columns if they don't exist (for existing databases)
+try {
+  const tableInfo = db.pragma('table_info(messages)');
+  const columns = tableInfo.map(c => c.name);
+  
+  if (!columns.includes('quote_content')) {
+    console.log("Migrating: Adding quote_content column...");
+    db.prepare('ALTER TABLE messages ADD COLUMN quote_content TEXT').run();
+  }
+  if (!columns.includes('quote_sender')) {
+    console.log("Migrating: Adding quote_sender column...");
+    db.prepare('ALTER TABLE messages ADD COLUMN quote_sender TEXT').run();
+  }
+} catch (error) {
+  console.error('Migration failed:', error);
+}
 
 // Middleware
 app.use(cors({
@@ -62,14 +90,14 @@ const requireAuth = (req, res, next) => {
 // 3. Send Message
 app.post('/send', requireAuth, (req, res) => {
   try {
-    const { senderName, senderID, content, id, type } = req.body;
+    const { senderName, senderID, content, id, type, quoteContent, quoteSender } = req.body;
     
     if (!content || !senderID) {
       return res.status(400).send("Missing fields");
     }
 
     const stmt = db.prepare(
-      `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at, quote_content, quote_sender) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     
     stmt.run(
@@ -79,7 +107,9 @@ app.post('/send', requireAuth, (req, res) => {
       content, 
       id || crypto.randomUUID(), 
       type || "text", 
-      Date.now()
+      Date.now(),
+      quoteContent || null,
+      quoteSender || null
     );
     
     res.json({ success: true });
@@ -92,6 +122,23 @@ app.post('/send', requireAuth, (req, res) => {
 // 4. Poll Messages
 app.get('/poll', requireAuth, async (req, res) => {
   const lastId = parseInt(req.query.last_id || "0");
+  const userId = req.query.user_id;
+  const userName = req.query.user_name;
+  
+  // Update Presence if user info is provided
+  if (userId) {
+    try {
+      const stmt = db.prepare(
+        `INSERT INTO presence (channel, user_id, user_name, last_seen) VALUES (?, ?, ?, ?) 
+         ON CONFLICT(channel, user_id) DO UPDATE SET last_seen = ?, user_name = ?`
+      );
+      const now = Date.now();
+      stmt.run(req.channelHex, userId, userName || "Unknown", now, now, userName || "Unknown");
+    } catch (e) {
+      console.error("Presence update failed:", e);
+    }
+  }
+
   const TIMEOUT = 20000; // 20 seconds
   const startTime = Date.now();
 
@@ -128,6 +175,34 @@ app.get('/poll', requireAuth, async (req, res) => {
   req.on('close', () => {
     clearInterval(pollInterval);
   });
+});
+
+// 5. Get Members
+app.get('/members', requireAuth, (req, res) => {
+  try {
+    const ACTIVE_THRESHOLD = 60000; // 1 minute
+    const now = Date.now();
+    
+    // Get active members
+    const stmt = db.prepare(
+      `SELECT user_id as id, user_name as name, last_seen as lastSeen FROM presence WHERE channel = ? AND last_seen > ?`
+    );
+    const members = stmt.all(req.channelHex, now - ACTIVE_THRESHOLD);
+    
+    // Map timestamp to ISO date if needed, or keep as number. Swift Date can init from timestamp.
+    // However, Swift usually expects seconds. JS Date.now() is ms.
+    // Let's return ms for consistency, or convert. 
+    // The previous Swift code used Date(timeIntervalSince1970: TimeInterval(sMsg.created_at) / 1000) for messages.
+    // So ms is fine.
+    
+    res.json({
+      count: members.length,
+      members: members
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.listen(PORT, () => {

@@ -1,8 +1,23 @@
 # Cuckoo Relay Server (Open Source)
 
-Language: English | [中文](README_CN.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/CuckooRelayServer.git)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/wowofun/CuckooRelayServer/pulls)
+
+Language: **English** | [中文](README_CN.md)
 
 This is the official self-hosted relay server for the Cuckoos iOS App. By deploying this lightweight script to your own Cloudflare account (Free Tier), you can enable secure, remote communication between your devices and friends.
+
+## Table of Contents
+- [Features](#features)
+- [Deployment Guide](#deployment-guide)
+  - [Option 1: One-Click Button](#option-1-one-click-button-recommended)
+  - [Option 2: Command Line](#option-2-command-line-for-developers)
+- [App Configuration](#app-configuration)
+- [Documentation](#documentation)
+- [Technical Details](#technical-details)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -55,7 +70,7 @@ This is the official self-hosted relay server for the Cuckoos iOS App. By deploy
    - *Note: Share this Key ONLY with friends you want to chat with. Anyone with the same Key will be in the same "chat room".*
 
 ## Documentation
-- [OpenClaw Integration Guide](OPENCLAW_INTEGRATION.md)
+- [OpenClaw Integration Guide](OPENCLAW_INTEGRATION.md) - Connect bots and external systems.
 
 ## Technical Details
 
@@ -64,6 +79,9 @@ This is the official self-hosted relay server for the Cuckoos iOS App. By deploy
 - **Protocol**: HTTPS Long Polling (Simulated Push)
 - **Security**: Channel Isolation via SHA-256 Hashing of Connection Key.
 
+## Contributing
+Contributions are welcome! Please feel free to submit a Pull Request.
+
 ## License
 
-MIT License. Free for personal and commercial use.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

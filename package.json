@@ -1,23 +1,23 @@
 {
   "name": "cuckoosdk",
   "version": "1.0.0",
-  "description": "[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/bicornfun/cuckoos-relay)",
+  "description": "[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/CuckooRelayServer)",
   "main": "cuckoo-relay.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wowofun/cuckooSDK.git"
+    "url": "git+https://github.com/wowofun/CuckooRelayServer.git"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/wowofun/cuckooSDK/issues"
+    "url": "https://github.com/wowofun/CuckooRelayServer/issues"
   },
-  "homepage": "https://github.com/wowofun/cuckooSDK#readme",
+  "homepage": "https://github.com/wowofun/CuckooRelayServer#readme",
   "devDependencies": {
     "wrangler": "^4.68.0"
   },

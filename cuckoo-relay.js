@@ -45,17 +45,27 @@ export default {
     if (method === "POST" && url.pathname === "/send") {
       try {
         const body = await request.json();
-        const { senderName, senderID, content, id, type } = body;
+        const { senderName, senderID, content, id, type, quoteContent, quoteSender } = body;
         
         if (!content || !senderID) {
           return new Response("Missing fields", { status: 400, headers });
         }
         
         // Store in D1
-        // Table: messages (id INTEGER PRIMARY KEY, channel TEXT, sender_id TEXT, sender_name TEXT, content TEXT, msg_id TEXT, type TEXT, created_at INTEGER)
+        // Table: messages (id INTEGER PRIMARY KEY, channel TEXT, sender_id TEXT, sender_name TEXT, content TEXT, msg_id TEXT, type TEXT, created_at INTEGER, quote_content TEXT, quote_sender TEXT)
         const stmt = env.DB.prepare(
-          `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-        ).bind(channelHex, senderID, senderName || "Unknown", content, id || crypto.randomUUID(), type || "text", Date.now());
+          `INSERT INTO messages (channel, sender_id, sender_name, content, msg_id, type, created_at, quote_content, quote_sender) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(
+          channelHex, 
+          senderID, 
+          senderName || "Unknown", 
+          content, 
+          id || crypto.randomUUID(), 
+          type || "text", 
+          Date.now(),
+          quoteContent || null,
+          quoteSender || null
+        );
         
         await stmt.run();
         
@@ -75,6 +85,22 @@ export default {
       // Get the last message ID the client has seen (optional cursor)
       // Note: We use 'id' (Auto Increment Integer) for reliable ordering, not timestamp
       const lastId = parseInt(url.searchParams.get("last_id") || "0");
+      const userId = url.searchParams.get("user_id");
+      const userName = url.searchParams.get("user_name");
+      
+      // Update Presence
+      if (userId) {
+        // D1 upsert
+        try {
+          await env.DB.prepare(
+            `INSERT INTO presence (channel, user_id, user_name, last_seen) VALUES (?, ?, ?, ?) 
+             ON CONFLICT(channel, user_id) DO UPDATE SET last_seen = ?, user_name = ?`
+          ).bind(channelHex, userId, userName || "Unknown", Date.now(), Date.now(), userName || "Unknown").run();
+        } catch (e) {
+          // Ignore presence errors to keep polling alive
+          console.error(e);
+        }
+      }
       
       const startTime = Date.now();
       const TIMEOUT = 15000; // 15 seconds long poll (Client timeout should be > 15s)
@@ -99,6 +125,23 @@ export default {
       
       // Timeout reached, return empty list so client reconnects
       return new Response(JSON.stringify([]), { 
+        headers: { ...headers, "Content-Type": "application/json" } 
+      });
+    }
+    
+    // 5. Get Members (GET /members)
+    if (method === "GET" && url.pathname === "/members") {
+      const ACTIVE_THRESHOLD = 60000; // 1 minute
+      const now = Date.now();
+      
+      const results = await env.DB.prepare(
+        `SELECT user_id as id, user_name as name, last_seen as lastSeen FROM presence WHERE channel = ? AND last_seen > ?`
+      ).bind(channelHex, now - ACTIVE_THRESHOLD).all();
+      
+      return new Response(JSON.stringify({
+        count: results.results.length,
+        members: results.results
+      }), { 
         headers: { ...headers, "Content-Type": "application/json" } 
       });
     }

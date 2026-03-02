@@ -7,6 +7,18 @@ CREATE TABLE messages (
   content TEXT,
   msg_id TEXT,
   type TEXT,
-  created_at INTEGER
+  created_at INTEGER,
+  quote_content TEXT,
+  quote_sender TEXT
 );
 CREATE INDEX idx_channel_id ON messages(channel, id);
+
+DROP TABLE IF EXISTS presence;
+CREATE TABLE presence (
+  channel TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  user_name TEXT,
+  last_seen INTEGER,
+  PRIMARY KEY (channel, user_id)
+);
+CREATE INDEX idx_presence_channel ON presence(channel);
