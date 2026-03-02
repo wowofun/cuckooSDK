@@ -4,7 +4,11 @@
   "description": "[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/wowofun/CuckooRelayServer)",
   "main": "cuckoo-relay.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute cuckoos-db --file=schema.sql --local",
+    "db:deploy": "wrangler d1 execute cuckoos-db --file=schema.sql --remote",
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",

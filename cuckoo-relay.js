@@ -14,6 +14,16 @@ export default {
       return new Response(null, { headers });
     }
     
+    // 0. Check Environment
+    if (!env.DB) {
+      return new Response(JSON.stringify({ 
+        error: "Database binding (DB) is missing. Please check wrangler.toml configuration." 
+      }), { 
+        status: 500, 
+        headers: { ...headers, "Content-Type": "application/json" } 
+      });
+    }
+
     // 1. Root / Health Check
     if (url.pathname === "/" || url.pathname === "/info") {
       return new Response(JSON.stringify({
@@ -76,6 +86,11 @@ export default {
           headers: { ...headers, "Content-Type": "application/json" } 
         });
       } catch (e) {
+        if (e.message.includes("no such table")) {
+          return new Response(JSON.stringify({ 
+            error: "Database schema not initialized. Please run 'wrangler d1 execute cuckoos-db --file=schema.sql --remote' (or local for dev)." 
+          }), { status: 500, headers: { ...headers, "Content-Type": "application/json" } });
+        }
         return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
       }
     }
@@ -108,22 +123,32 @@ export default {
       const startTime = Date.now();
       const TIMEOUT = 15000; // 15 seconds long poll (Client timeout should be > 15s)
       
-      while (Date.now() - startTime < TIMEOUT) {
-        // Query for new messages
-        const messages = await env.DB.prepare(
-          `SELECT * FROM messages WHERE channel = ? AND id > ? ORDER BY id ASC LIMIT 50`
-        ).bind(channelHex, lastId).all();
-        
-        if (messages.results && messages.results.length > 0) {
-          // Found new messages! Return immediately
-          return new Response(JSON.stringify(messages.results), { 
-            headers: { ...headers, "Content-Type": "application/json" } 
-          });
+      try {
+        while (Date.now() - startTime < TIMEOUT) {
+          // Query for new messages
+          // Note: If table doesn't exist, this will throw
+          const messages = await env.DB.prepare(
+            `SELECT * FROM messages WHERE channel = ? AND id > ? ORDER BY id ASC LIMIT 50`
+          ).bind(channelHex, lastId).all();
+          
+          if (messages.results && messages.results.length > 0) {
+            // Found new messages! Return immediately
+            return new Response(JSON.stringify(messages.results), { 
+              headers: { ...headers, "Content-Type": "application/json" } 
+            });
+          }
+          
+          // No messages yet, wait 1s before checking again
+          // This 'await' does NOT count towards CPU time limit on CF Workers
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        // No messages yet, wait 1s before checking again
-        // This 'await' does NOT count towards CPU time limit on CF Workers
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (e) {
+        if (e.message.includes("no such table")) {
+          return new Response(JSON.stringify({ 
+            error: "Database schema not initialized. Please run 'wrangler d1 execute cuckoos-db --file=schema.sql --remote' (or local for dev)." 
+          }), { status: 500, headers: { ...headers, "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
       }
       
       // Timeout reached, return empty list so client reconnects
